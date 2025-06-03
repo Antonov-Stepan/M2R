@@ -12,9 +12,12 @@ def hilbert_transform():
     pass
 
 
-def f(u):
+def f(u, c=1.0):
     """Return the evaluation of the function"""
-    pass
+    # need this to be derivative of u
+    u_x = 0
+    H_u_x = hilbert_transform(u_x)
+    return -c * u + 0.5 * u**2 + H_u_x
 
 
 def jacobian(N, u):
