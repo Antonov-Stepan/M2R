@@ -33,20 +33,20 @@ def f(u, k, k_sign):
 
 def eulers(u0):
     """Solve the Benjamin-Ono ODE given the initial condition of u0."""
-    N = 1000              # Number of spatial points
-    L = 20               # Domain size [-L, L]
-    T = 0.03            # Final time
+    N = 100              # Number of spatial points
+    L = 1.5             # Domain size [-L, L]. Ensure the function is periodic on this domain.
+    T = 10            # Final time
     dt = 0.0001           # Time step
     steps = int(T/dt)    # Number of time steps
     # Spatial grid
     x = np.linspace(-L, L, N, endpoint=False)
     dx = x[1] - x[0]
-    k = np.fft.fftfreq(N, d=dx) * 2 * np.pi  # Wavenumbers
+    k = np.fft.fftfreq(N, d=dx) * 2 * np.pi  # Wavenumbers (double check convetion)
     k_sign = np.sign(k)
-    u = [u0(x)]  # condition
+    u = [u0(x, L)]  # condition
     fig, ax = plt.subplots()
     line, = ax.plot(x, u[0])
-    ax.set_ylim(-2, 2)
+    ax.set_ylim(-0.5, 0.5)
     ax.set_xlim(x[0], x[-1])
     ax.set_xlabel("x")
     ax.set_ylabel("u(x, t)")
@@ -57,13 +57,14 @@ def eulers(u0):
         line.set_ydata(u[0])
         title.set_text(f"t = {frame * dt:.2f}")
         return line, title
-
-    ani = animation.FuncAnimation(fig, update, frames=steps, interval=50, repeat=False)
+    frame_interval = 1000
+    ani = animation.FuncAnimation(fig, update, frames=range(0, steps, frame_interval), interval=30, repeat=False)
     plt.show()
 
 
-def u0(x):
-    return np.cos(2*x)
+
+def u0(x, L):
+    return 0.5 * np.cos(np.pi * x / L)
 
 
 eulers(u0)
