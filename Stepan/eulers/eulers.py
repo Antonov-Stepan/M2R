@@ -33,10 +33,10 @@ def f(u, k, k_sign):
 
 def eulers(u0):
     """Solve the Benjamin-Ono ODE given the initial condition of u0."""
-    N = 512              # Number of spatial points
-    L = np.pi               # Domain size [-L, L]
-    T = 0.5              # Final time
-    dt = 0.001           # Time step
+    N = 1000              # Number of spatial points
+    L = 20               # Domain size [-L, L]
+    T = 0.03            # Final time
+    dt = 0.0001           # Time step
     steps = int(T/dt)    # Number of time steps
     # Spatial grid
     x = np.linspace(-L, L, N, endpoint=False)
@@ -58,9 +58,12 @@ def eulers(u0):
         title.set_text(f"t = {frame * dt:.2f}")
         return line, title
 
-    ani = animation.FuncAnimation(fig, update, frames=steps, interval=500)
+    ani = animation.FuncAnimation(fig, update, frames=steps, interval=50, repeat=False)
     plt.show()
 
 
-u0 = np.cos
+def u0(x):
+    return np.cos(2*x)
+
+
 eulers(u0)
