@@ -91,7 +91,7 @@ plt.show()
 """
 fig, ax = plt.subplots()
 line, = ax.plot(x, snapshots[0])
-ax.set_ylim(-2, 12)
+ax.set_ylim(-2, 2)
 ax.set_xlim(x[0], x[-1])
 ax.set_xlabel("x")
 ax.set_ylabel("u(x, t)")
@@ -106,5 +106,5 @@ ani = animation.FuncAnimation(
     fig, update, frames=len(snapshots), interval=100, blit=False
 )
 
-plt.tight_layout()
+
 plt.show()
