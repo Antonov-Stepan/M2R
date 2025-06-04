@@ -32,35 +32,55 @@ def f(u, k, k_sign):
 
 
 def eulers(u0):
-    """Solve the Benjamin-Ono ODE given the initial condition of u0."""
-    N = 100              # Number of spatial points
-    L = 1.5             # Domain size [-L, L]. Ensure the function is periodic on this domain.
-    T = 10            # Final time
-    dt = 0.0001           # Time step
-    steps = int(T/dt)    # Number of time steps
-    # Spatial grid
+    N = 256
+    L = 1.5
+    T = 0.7
+    dt = 0.1
+    steps = int(T / dt)
+
     x = np.linspace(-L, L, N, endpoint=False)
     dx = x[1] - x[0]
-    k = np.fft.fftfreq(N, d=dx) * 2 * np.pi  # Wavenumbers (double check convetion)
+    k = np.fft.fftfreq(N, d=dx) * 2 * np.pi
     k_sign = np.sign(k)
-    u = [u0(x, L)]  # condition
+
+    u = u0(x, L)
+
+    snapshot_times = np.linspace(0, T, 100)
+    snapshot_steps = [int(t / dt) for t in snapshot_times]
+    snapshots = []
+    times = []
+
+    for step in range(steps + 1):
+        if step in snapshot_steps:
+            snapshots.append(u.copy())
+            times.append(step * dt)
+        u = u + dt * f(u, k, k_sign)
+        u_hat = np.fft.fft(u)
+    cutoff = int(N * 2 / 3)
+    u_hat[cutoff:-cutoff] = 0
+    u = np.fft.ifft(u_hat).real
+
+    print(f"Collected {len(snapshots)} snapshots")
+
+    # === Plotting and animation ===
     fig, ax = plt.subplots()
-    line, = ax.plot(x, u[0])
-    ax.set_ylim(-0.5, 0.5)
+    line, = ax.plot(x, snapshots[0])
+    title = ax.set_title("t = 0.00")
+    ax.set_ylim(-1, 1)
     ax.set_xlim(x[0], x[-1])
     ax.set_xlabel("x")
     ax.set_ylabel("u(x, t)")
-    title = ax.set_title("t = 0.00")
 
     def update(frame):
-        u[0] = u[0] + dt * f(u[0], k, k_sign)
-        line.set_ydata(u[0])
-        title.set_text(f"t = {frame * dt:.2f}")
+        line.set_ydata(snapshots[frame])
+        title.set_text(f"t = {times[frame]:.2f}")
         return line, title
-    frame_interval = 1000
-    ani = animation.FuncAnimation(fig, update, frames=range(0, steps, frame_interval), interval=30, repeat=False)
-    plt.show()
 
+    ani = animation.FuncAnimation(
+        fig, update, frames=len(snapshots), interval=100, blit=False
+    )
+
+    plt.show()
 
 
 def u0(x, L):
