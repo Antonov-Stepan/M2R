@@ -32,7 +32,8 @@ def f(u, k, k_sign, c, amplitude):
     f = (-c * H_ux) - uxx + H_uux
     # min is 0 and max is N/2 + 1
     max = (N//2) + 1
-    constraint = u[0] - u[max] - amplitude
+    # MAX - MIN
+    constraint = u[max] - u[0] - amplitude
     return np.append(f, constraint)
 
 
