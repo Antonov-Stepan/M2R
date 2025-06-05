@@ -25,11 +25,14 @@ def spatial_derivatives(u, k):
 
 def f(u, k, k_sign, c, amplitude):
     """Return the evaluation of the function"""
+    N = len(u)
     ux, uxx = spatial_derivatives(u, k)
     H_ux = hilbert_transform(ux, k_sign)
     H_uux = hilbert_transform(u * ux, k_sign)
     f = (-c * H_ux) - uxx + H_uux
-    constraint = u[0] - u[-1] - amplitude
+    # min is 0 and max is N/2 + 1
+    max = (N//2) + 1
+    constraint = u[0] - u[max] - amplitude
     return np.append(f, constraint)
 
 
@@ -57,7 +60,7 @@ def newton_meth(amp):
     """Solve the travelling wave solution with newton's method"""
 
     # create grid
-    N = 20
+    N = 100
     L = 2 * np.pi
     X = np.linspace(0, L, num=N, endpoint=False)
     dx = X[1] - X[0]
@@ -92,4 +95,4 @@ def newton_meth(amp):
     print(f"c estimate:{c}")
 
 
-newton_meth(0.01)
+newton_meth(5)
