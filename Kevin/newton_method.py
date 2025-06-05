@@ -61,19 +61,18 @@ def newton_meth(amp):
 
     # create grid
     N = 100
-    L = 2 * np.pi
-    X = np.linspace(0, L, num=N, endpoint=False)
+    L = np.pi
+    X = np.linspace(-L, L, num=N, endpoint=False)
     dx = X[1] - X[0]
 
     # initial guess
     u = amp*np.cos(X)
+    plt.plot(X, u, label="Initial Guess")
     c = 1.0
     k = np.fft.fftfreq(N, d=dx) * 2 * np.pi
     k_sign = np.sign(k)
     res = f(u, k, k_sign, c, amp)
     err = np.max(np.abs(res))
-
-    # plt.plot(X, u, label="Initial Guess")
 
     # newton
     while err > 10**-10:
@@ -95,4 +94,4 @@ def newton_meth(amp):
     print(f"c estimate:{c}")
 
 
-newton_meth(5)
+newton_meth(1)
