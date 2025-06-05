@@ -5,44 +5,91 @@ References:
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 
-def hilbert_transform():
-    """Calculate the hilbert transform"""
-    pass
+def hilbert_transform(u, k_sign):
+    """Compute the Hilbert transform by Fouriers method."""
+    u_hat = np.fft.fft(u)
+    H_hat = -1j * k_sign * u_hat
+    return np.fft.ifft(H_hat).real
 
 
-def f(u, c=1.0):
+def spatial_derivatives(u, k):
+    """Compute the derivatives int the Fourier space."""
+    u_hat = np.fft.fft(u)
+    ux = np.fft.ifft(1j * k * u_hat).real
+    uxx = np.fft.ifft(-k**2 * u_hat).real
+    return np.array(ux), np.array(uxx)
+
+
+def f(u, k, k_sign, c, amplitude):
     """Return the evaluation of the function"""
-    # need this to be derivative of u
-    u_x = 0
-    H_u_x = hilbert_transform(u_x)
-    return -c * u + 0.5 * u**2 + H_u_x
+    ux, uxx = spatial_derivatives(u, k)
+    H_ux = hilbert_transform(ux, k_sign)
+    H_uux = hilbert_transform(u * ux, k_sign)
+    f = (-c * H_ux) - uxx + H_uux
+    constraint = u[0] - u[-1] - amplitude
+    return np.append(f, constraint)
 
 
-def jacobian(N, u):
+def jacobian(N, u, k, k_sign, c, amplitude, res):
     """Computes the Jacobian"""
     delta = 10**-7
-    J = np.zeros((N, N))
+    J = np.zeros((N+1, N+1))
+
+    # w.r.t u
     for j in range(N):
-        delta_u_j = np.zeros(N)
-        delta_u_j[j] = delta
-        J[:, j] = (f(u + delta_u_j) - f(u)) / delta
+        delta_uj = np.zeros(N)
+        delta_uj += u
+        delta_uj[j] += delta
+        delta_res = f(delta_uj, k, k_sign, c, amplitude)
+        J[:, j] = (delta_res - res) / delta
+
+    # w.r.t c
+    delta_c_res = f(u, k, k_sign, c + delta, amplitude)
+    J[:, -1] = (delta_c_res - res) / delta
+
     return J
 
 
-def newton_meth():
+def newton_meth(amp):
     """Solve the travelling wave solution with newton's method"""
-    N = 10
+
     # create grid
-    X = np.linspace(0, 2*np.pi, num=N, endpoint=False)
+    N = 20
+    L = 2 * np.pi
+    X = np.linspace(0, L, num=N, endpoint=False)
+    dx = X[1] - X[0]
+
     # initial guess
-    u = 0.01*np.cos(X)
-    b = f(u)
-    err = np.max(np.abs(b))
+    u = amp*np.cos(X)
+    c = 1.0
+    k = np.fft.fftfreq(N, d=dx) * 2 * np.pi
+    k_sign = np.sign(k)
+    res = f(u, k, k_sign, c, amp)
+    err = np.max(np.abs(res))
+
+    # plt.plot(X, u, label="Initial Guess")
+
+    # newton
     while err > 10**-10:
-        J = jacobian(N, u)
-        corr = np.linalg.solve(-J, b)
-        u += corr
-        b = f(u)
-        err = np.max(np.abs(b))
+        J = jacobian(N, u, k, k_sign, c, amp, res)
+        corr = np.linalg.solve(-J, res)
+        u += corr[:-1]
+        c += corr[-1]
+        res = f(u, k, k_sign, c, amp)
+        err = np.max(np.abs(res))
+
+    plt.plot(X, u, label="Solution")
+    plt.title(f"Travelling wave solution with {N} grid points")
+    plt.xlabel("X")
+    plt.ylabel("u")
+    plt.legend()
+    plt.grid(True)
+    # plt.plot(X, f(u, k, k_sign, c, amp)[:-1], label="f")
+    plt.show()
+    print(f"c estimate:{c}")
+
+
+newton_meth(0.01)
