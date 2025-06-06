@@ -8,36 +8,71 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def hilbert_transform(u, k_sign):
-    """Compute the Hilbert transform by Fouriers method."""
-    u_hat = np.fft.fft(u)
-    H_hat = -1j * k_sign * u_hat
-    return np.fft.ifft(H_hat).real
-
-
-def spatial_derivatives(u, k):
-    """Compute the derivatives int the Fourier space."""
-    u_hat = np.fft.fft(u)
-    ux = np.fft.ifft(1j * k * u_hat).real
-    uxx = np.fft.ifft(-k**2 * u_hat).real
-    return np.array(ux), np.array(uxx)
-
-
-def f(u, k, k_sign, c, amplitude):
-    """Return the evaluation of the function"""
+def hilbert_transform(u, x):
+    """Compute the Hilbert transform using finite difference and quadrature."""
     N = len(u)
-    ux, uxx = spatial_derivatives(u, k)
-    H_ux = hilbert_transform(ux, k_sign)
-    H_uux = hilbert_transform(u * ux, k_sign)
+    dx = x[1] - x[0]
+    H = np.zeros(N)
+
+    for i in range(N):
+        integral = 0
+        for j in range(N):
+            if j != i:
+                denom = x[i] - x[j]
+                integral += u[j] / denom
+        H[i] = (1/np.pi) * integral * dx
+
+    return H
+
+
+def f(u, x, c, amplitude):
+    """Return the evaluation of the function"""
+    dx = x[1] - x[0]
+    ux = first_derivate(u, dx)
+    uxx = second_derivative(u, dx)
+    H_ux = hilbert_transform(ux, x)
+    H_uux = hilbert_transform(u * ux, x)
     f = (-c * H_ux) - uxx + H_uux
-    # min is 0 and max is N/2 + 1
-    max = (N//2) + 1
-    # MAX - MIN
-    constraint = u[max] - u[0] - amplitude
+    constraint = u[-1] - u[0] - amplitude
     return np.append(f, constraint)
 
 
-def jacobian(u, k, k_sign, c, amplitude, res):
+def first_derivate(u, dx):
+    """Derivative using finite difference method"""
+
+    ux = np.zeros(len(u))
+    # using forward and backwards euler for end points and
+    # then using central differences for all other points
+
+    # forward
+    ux[0] = forward_euler(u, dx)
+    # backward
+    ux[-1] = backward_euler(u, dx)
+    # central
+    ux[1:-1] = (u[2:] - u[:-2])/(2*dx)
+    return ux
+
+
+def forward_euler(u, dx):
+    return (u[1] - u[0])/dx
+
+
+def backward_euler(u, dx):
+    return (u[-1] - u[-2])/dx
+
+
+def second_derivative(u, dx):
+    """Second derivative using central difference"""
+    uxx = np.zeros(len(u))
+
+    ux = first_derivate(u, dx)
+    uxx[0] = forward_euler(ux, dx)
+    uxx[-1] = backward_euler(ux, dx)
+    uxx[1:-1] = (u[2:] - (2*u[1-1]) + u[:-2])/(dx**2)
+    return uxx
+
+
+def jacobian(u, x, c, amplitude, res):
     """Computes the Jacobian"""
     N = len(u)
     delta = 10**-7
@@ -48,11 +83,11 @@ def jacobian(u, k, k_sign, c, amplitude, res):
         delta_uj = np.zeros(N)
         delta_uj += u
         delta_uj[j] += delta
-        delta_res = f(delta_uj, k, k_sign, c, amplitude)
+        delta_res = f(delta_uj, x, c, amplitude)
         J[:, j] = (delta_res - res) / delta
 
     # w.r.t c
-    delta_c_res = f(u, k, k_sign, c + delta, amplitude)
+    delta_c_res = f(u, x, c + delta, amplitude)
     J[:, -1] = (delta_c_res - res) / delta
 
     return J
@@ -62,27 +97,24 @@ def newton_meth(amp):
     """Solve the travelling wave solution with newton's method"""
 
     # create grid
-    N = 1000
+    N = 20
     L = np.pi
     X = np.linspace(-L, L, num=N, endpoint=False)
-    dx = X[1] - X[0]
 
     # initial guess
     u = (amp/2)*np.cos(X)
     plt.plot(X, u, label="Initial Guess")
     c = 1.0
-    k = np.fft.fftfreq(N, d=dx) * 2 * np.pi
-    k_sign = np.sign(k)
-    res = f(u, k, k_sign, c, amp)
+    res = f(u, X, c, amp)
     err = np.max(np.abs(res))
 
     # newton
     while err > 10**-10:
-        J = jacobian(u, k, k_sign, c, amp, res)
+        J = jacobian(u, X, c, amp, res)
         corr = np.linalg.solve(-J, res)
         u += corr[:-1]
         c += corr[-1]
-        res = f(u, k, k_sign, c, amp)
+        res = f(u, X, c, amp)
         err = np.max(np.abs(res))
 
     plt.plot(X, u, label="Solution")
@@ -100,13 +132,12 @@ def newton_meth2(amp):
     """Only solving half the solution"""
 
     # create grid
-    N = 100
+    N = 20
     # h = half
     Nh = N//2 + 1
     L = np.pi
     X = np.linspace(-L, L, num=N, endpoint=False)
     x = np.linspace(-L, 0, num=Nh, endpoint=True)
-    dx = x[1] - x[0]
 
     # initial guess
     u = (amp/2)*np.cos(x)
@@ -114,18 +145,16 @@ def newton_meth2(amp):
     uf = np.concatenate((u, u[-2:0:-1]))
     plt.plot(X, uf, label="Initial Guess")
     c = 1.0
-    k = np.fft.fftfreq(Nh, d=dx) * 2 * np.pi
-    k_sign = np.sign(k)
-    res = f(u, k, k_sign, c, amp)
+    res = f(u, x, c, amp)
     err = np.max(np.abs(res))
 
     # newton
     while err > 10**-10:
-        J = jacobian(u, k, k_sign, c, amp, res)
+        J = jacobian(u, x, c, amp, res)
         corr = np.linalg.solve(-J, res)
         u += corr[:-1]
         c += corr[-1]
-        res = f(u, k, k_sign, c, amp)
+        res = f(u, x, c, amp)
         err = np.max(np.abs(res))
 
     # final u
@@ -141,6 +170,6 @@ def newton_meth2(amp):
     print(f"c estimate:{c}")
 
 
-amp = 0.1
-newton_meth(amp)
+amp = 0.01
+# newton_meth(amp)
 newton_meth2(amp)
