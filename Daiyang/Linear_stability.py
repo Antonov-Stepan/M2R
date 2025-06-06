@@ -19,7 +19,6 @@ def spatial_derivatives(u, k):
     return np.array(ux), np.array(uxx)
 
 
-# Find f(u): [-cH(u_x) - u_xx + H(u*u_x), u(0) - u(-L) + H]
 def f(u, c, H, k):
     N = len(u)
     ux, uxx = spatial_derivatives(u, k)
@@ -31,7 +30,6 @@ def f(u, c, H, k):
     return np.append(f, eq2)
 
 
-# Jacobian
 def jacobian(u, c, k, H, func):
     delta = 1e-8
     N = len(u)
@@ -48,13 +46,13 @@ def jacobian(u, c, k, H, func):
     return J
 
 
-def newton(H, *, N=256, L=np.pi, tol=1e-12, n=30):
+def newton(H, *, N=2000, L=np.pi, tol=1e-12, n=30):
     dx = 2*L / N
     x = np.arange(-L, L, dx)
     k = np.fft.fftfreq(N, d=dx) * 2*np.pi
 
     # initial guess
-    u = H/2 * np.cos(x)
+    u = 0.5 * H * np.cos(x)
     c = 1.0
 
     # Newton iteration
@@ -67,14 +65,40 @@ def newton(H, *, N=256, L=np.pi, tol=1e-12, n=30):
         u += delta[:-1]
         c += delta[-1]
 
-    plt.plot(x, H/2 * np.cos(x), label='Initial guess')
-    plt.plot(x, u, label='Newtons Solution')
-    plt.xlabel('x')
-    plt.ylabel('u')
-    plt.grid(True)
-    plt.legend()
-    plt.show()
+    return x, u, c, k
 
 
-H = 0.2
-newton(H)
+# L = -c H dx - dx² + H( U dx + Ux )
+def L(v, U, Ux, c, k):
+    vx = np.fft.ifft(1j * k * np.fft.fft(v)).real
+    vxx = np.fft.ifft(-k**2 * np.fft.fft(v)).real
+    H_vx = hilbert(vx, k)
+
+    # non‑constant coefficients handled in physical space
+    H_term = hilbert(U * vx + Ux * v, k)
+
+    return -c * H_vx - vxx + H_term
+
+
+def L_matrix(U, c, k):
+    N = len(U)
+    Ux, _ = spatial_derivatives(U, k)
+
+    L_mat = np.zeros((N, N))
+
+    for j in range(N):
+        e_j = np.zeros(N)
+        e_j[j] = 1.0  # standard basis vector
+        L_mat[:, j] = L(e_j, U, Ux, c, k)
+    return L_mat
+
+
+x, U, c, k = newton(H=0.5, N=128)
+Lmat1 = L_matrix(U, c, k)
+eigvals = np.linalg.eigvals(Lmat1)
+
+plt.figure(figsize=(6, 4))
+plt.scatter(eigvals.real, eigvals.imag)
+plt.xlabel(r'Re$(\lambda)$')
+plt.ylabel(r'Im$(\lambda)$')
+plt.show()
