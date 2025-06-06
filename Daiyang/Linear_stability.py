@@ -16,9 +16,10 @@ def spatial_derivatives(u, k):
     u_hat = np.fft.fft(u)
     ux = np.fft.ifft(1j * k * u_hat).real
     uxx = np.fft.ifft(-k**2 * u_hat).real
-    return np.array(ux), np.array(uxx)
+    return ux, uxx
 
 
+# Find f(u): [-cH(u_x) - u_xx + H(u*u_x), u(0) - u(-L) + H]
 def f(u, c, H, k):
     N = len(u)
     ux, uxx = spatial_derivatives(u, k)
@@ -30,6 +31,7 @@ def f(u, c, H, k):
     return np.append(f, eq2)
 
 
+# Jacobian
 def jacobian(u, c, k, H, func):
     delta = 1e-8
     N = len(u)
@@ -46,13 +48,13 @@ def jacobian(u, c, k, H, func):
     return J
 
 
-def newton(H, *, N=2000, L=np.pi, tol=1e-12, n=30):
+def newton(H, *, N=256, L=np.pi, tol=1e-12, n=30):
     dx = 2*L / N
     x = np.arange(-L, L, dx)
     k = np.fft.fftfreq(N, d=dx) * 2*np.pi
 
     # initial guess
-    u = 0.5 * H * np.cos(x)
+    u = H/2 * np.cos(x)
     c = 1.0
 
     # Newton iteration
@@ -68,16 +70,16 @@ def newton(H, *, N=2000, L=np.pi, tol=1e-12, n=30):
     return x, u, c, k
 
 
-# L = -c H dx - dx² + H( U dx + Ux )
-def L(v, U, Ux, c, k):
+# L = -c H(dx) - dx² + H( U dx + Ux )
+def Lv(v, U, Ux, c, k):
+
     vx = np.fft.ifft(1j * k * np.fft.fft(v)).real
     vxx = np.fft.ifft(-k**2 * np.fft.fft(v)).real
     H_vx = hilbert(vx, k)
 
-    # non‑constant coefficients handled in physical space
     H_term = hilbert(U * vx + Ux * v, k)
 
-    return -c * H_vx - vxx + H_term
+    return -c * H_vx + vxx + H_term
 
 
 def L_matrix(U, c, k):
@@ -88,17 +90,18 @@ def L_matrix(U, c, k):
 
     for j in range(N):
         e_j = np.zeros(N)
-        e_j[j] = 1.0  # standard basis vector
-        L_mat[:, j] = L(e_j, U, Ux, c, k)
+        e_j[j] = 1.0
+        L_mat[:, j] = Lv(e_j, U, Ux, c, k)
     return L_mat
 
 
-x, U, c, k = newton(H=0.5, N=128)
-Lmat1 = L_matrix(U, c, k)
-eigvals = np.linalg.eigvals(Lmat1)
+x, U, c, k = newton(H=1.5, N=32)
+Lmat = L_matrix(U, c, k)
+eigvals = np.linalg.eigvals(Lmat)
 
 plt.figure(figsize=(6, 4))
-plt.scatter(eigvals.real, eigvals.imag)
+plt.scatter(eigvals.real, eigvals.imag, s=14)
+plt.axvline(0, color='k', lw=0.8)
 plt.xlabel(r'Re$(\lambda)$')
 plt.ylabel(r'Im$(\lambda)$')
 plt.show()

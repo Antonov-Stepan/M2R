@@ -7,7 +7,7 @@ def hilbert(u, k):
     sgn = np.sign(k)
     sgn[0] = 0
     u_hat = np.fft.fft(u)
-    return np.fft.ifft(1j * sgn * u_hat).real
+    return np.fft.ifft(-1j * sgn * u_hat).real
 
 
 # Derivative of u
@@ -76,5 +76,5 @@ def newton(H, *, N=256, L=np.pi, tol=1e-12, n=30):
     plt.show()
 
 
-H = 0.2
+H = 1
 newton(H)
