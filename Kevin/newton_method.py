@@ -58,11 +58,52 @@ def jacobian(u, k, k_sign, c, amplitude, res):
     return J
 
 
+def f2(u, c, amplitude):
+    """Return the evaluation of the function"""
+    # only have half the u, so replicate to make full, then return half
+    # full u
+    uf = np.concatenate((u, u[-2:0:-1]))
+    L = np.pi
+    N = (len(u) - 1) * 2
+    X = np.linspace(-L, L, num=N, endpoint=False)
+    dx = X[1] - X[0]
+    k = np.fft.fftfreq(N, d=dx) * 2 * np.pi
+    k_sign = np.sign(k)
+    ux, uxx = spatial_derivatives(uf, k)
+    H_ux = hilbert_transform(ux, k_sign)
+    H_uux = hilbert_transform(uf * ux, k_sign)
+    f = (-c * H_ux) - uxx + H_uux
+    f = f[0:(N//2 + 1)]
+    constraint = u[-1] - u[0] - amplitude
+    return np.append(f, constraint)
+
+
+def jacobian2(u, c, amplitude, res):
+    """Computes the Jacobian for half solution"""
+    N = len(u)
+    delta = 10**-7
+    J = np.zeros((N+1, N+1))
+
+    # w.r.t u
+    for j in range(N):
+        delta_uj = np.zeros(N)
+        delta_uj += u
+        delta_uj[j] += delta
+        delta_res = f2(delta_uj, c, amplitude)
+        J[:, j] = (delta_res - res) / delta
+
+    # w.r.t c
+    delta_c_res = f2(u, c + delta, amplitude)
+    J[:, -1] = (delta_c_res - res) / delta
+
+    return J
+
+
 def newton_meth(amp):
     """Solve the travelling wave solution with newton's method"""
 
     # create grid
-    N = 1000
+    N = 512
     L = np.pi
     X = np.linspace(-L, L, num=N, endpoint=False)
     dx = X[1] - X[0]
@@ -100,13 +141,12 @@ def newton_meth2(amp):
     """Only solving half the solution"""
 
     # create grid
-    N = 100
+    N = 512
     # h = half
     Nh = N//2 + 1
     L = np.pi
     X = np.linspace(-L, L, num=N, endpoint=False)
     x = np.linspace(-L, 0, num=Nh, endpoint=True)
-    dx = x[1] - x[0]
 
     # initial guess
     u = (amp/2)*np.cos(x)
@@ -114,18 +154,16 @@ def newton_meth2(amp):
     uf = np.concatenate((u, u[-2:0:-1]))
     plt.plot(X, uf, label="Initial Guess")
     c = 1.0
-    k = np.fft.fftfreq(Nh, d=dx) * 2 * np.pi
-    k_sign = np.sign(k)
-    res = f(u, k, k_sign, c, amp)
+    res = f2(u, c, amp)
     err = np.max(np.abs(res))
 
     # newton
     while err > 10**-10:
-        J = jacobian(u, k, k_sign, c, amp, res)
+        J = jacobian2(u, c, amp, res)
         corr = np.linalg.solve(-J, res)
         u += corr[:-1]
         c += corr[-1]
-        res = f(u, k, k_sign, c, amp)
+        res = f2(u, c, amp)
         err = np.max(np.abs(res))
 
     # final u
