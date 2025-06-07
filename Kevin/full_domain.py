@@ -23,9 +23,13 @@ def spatial_derivatives(u, k):
     return np.array(ux), np.array(uxx)
 
 
-def f(u, k, k_sign, c, amplitude):
+def f(u, L, c, amplitude):
     """Return the evaluation of the function"""
     N = len(u)
+    X = np.linspace(-L, L, num=N, endpoint=False)
+    dx = X[1] - X[0]
+    k = np.fft.fftfreq(N, d=dx) * 2 * np.pi
+    k_sign = np.sign(k)
     ux, uxx = spatial_derivatives(u, k)
     H_ux = hilbert_transform(ux, k_sign)
     H_uux = hilbert_transform(u * ux, k_sign)
@@ -37,7 +41,7 @@ def f(u, k, k_sign, c, amplitude):
     return np.append(f, constraint)
 
 
-def jacobian(u, k, k_sign, c, amplitude, res):
+def jacobian(u, L, c, amplitude, res):
     """Computes the Jacobian"""
     N = len(u)
     delta = 10**-7
@@ -48,120 +52,34 @@ def jacobian(u, k, k_sign, c, amplitude, res):
         delta_uj = np.zeros(N)
         delta_uj += u
         delta_uj[j] += delta
-        delta_res = f(delta_uj, k, k_sign, c, amplitude)
+        delta_res = f(delta_uj, L, c, amplitude)
         J[:, j] = (delta_res - res) / delta
 
     # w.r.t c
-    delta_c_res = f(u, k, k_sign, c + delta, amplitude)
+    delta_c_res = f(u, L, c + delta, amplitude)
     J[:, -1] = (delta_c_res - res) / delta
 
     return J
 
 
-def f2(u, c, amplitude):
-    """Return the evaluation of the function"""
-    # only have half the u, so replicate to make full, then return half
-    # full u
-    uf = np.concatenate((u, u[-2:0:-1]))
-    L = np.pi
-    N = (len(u) - 1) * 2
-    X = np.linspace(-L, L, num=N, endpoint=False)
-    dx = X[1] - X[0]
-    k = np.fft.fftfreq(N, d=dx) * 2 * np.pi
-    k_sign = np.sign(k)
-    ux, uxx = spatial_derivatives(uf, k)
-    H_ux = hilbert_transform(ux, k_sign)
-    H_uux = hilbert_transform(uf * ux, k_sign)
-    fu = (-c * H_ux) - uxx + H_uux
-    fu = fu[0:(N//2 + 1)]
-    constraint = u[-1] - u[0] - amplitude
-    return np.append(fu, constraint)
-
-
-def jacobian2(u, c, amplitude, res):
-    """Computes the Jacobian for half solution"""
-    N = len(u)
-    delta = 10**-7
-    J = np.zeros((N+1, N+1))
-
-    # w.r.t u
-    for j in range(N):
-        delta_uj = np.zeros(N)
-        delta_uj += u
-        delta_uj[j] += delta
-        delta_res = f2(delta_uj, c, amplitude)
-        J[:, j] = (delta_res - res) / delta
-
-    # w.r.t c
-    delta_c_res = f2(u, c + delta, amplitude)
-    J[:, -1] = (delta_c_res - res) / delta
-
-    return J
-
-
-def newton_meth(N, L, amp):
+def newton_meth(ui, L, amp, c=1.0):
     """Solve the travelling wave solution with newton's method"""
 
-    # create grid
-    X = np.linspace(-L, L, num=N, endpoint=False)
-    dx = X[1] - X[0]
-
     # initial guess
-    u = (amp/2)*np.cos(X)
-    plt.plot(X, u, label="Initial Guess")
-    c = 1.0
-    k = np.fft.fftfreq(N, d=dx) * 2 * np.pi
-    k_sign = np.sign(k)
-    res = f(u, k, k_sign, c, amp)
+    u = np.copy(ui)
+    res = f(u, L, c, amp)
     err = np.max(np.abs(res))
 
     # newton
     while err > 10**-10:
-        J = jacobian(u, k, k_sign, c, amp, res)
+        J = jacobian(u, L, c, amp, res)
         corr = np.linalg.solve(-J, res)
         u += corr[:-1]
         c += corr[-1]
-        res = f(u, k, k_sign, c, amp)
+        res = f(u, L, c, amp)
         err = np.max(np.abs(res))
 
-    plt.plot(X, u, label="Solution")
-    plt.title(f"Travelling wave solution with {N} grid points")
-    plt.plot(X, f(u, k, k_sign, c, amp)[:-1], label="f")
-    plt.xlabel("X")
-    plt.ylabel("u")
-    plt.legend()
-    plt.grid(True)
-    
-    plt.show()
-    print(f"c estimate:{c}")
-
-
-def newton_meth2(N, u, amp, c=1.0):
-    """Only solving half the solution but return full reflected solution"""
-
-    # create grid
-    # h = half
-    Nh = N//2 + 1
-    print(c)
-    # initial guess
-    ui = np.copy(u)
-    ui = ui[0:Nh]
-    res = f2(ui, c, amp)
-    err = np.max(np.abs(res))
-
-    # newton
-    while err > 10**-10:
-        J = jacobian2(ui, c, amp, res)
-        corr = np.linalg.solve(-J, res)
-        ui += corr[:-1]
-        c += corr[-1]
-        res = f2(ui, c, amp)
-        err = np.max(np.abs(res))
-        print(err)
-
-    # final u
-    uf = np.concatenate((ui, ui[-2:0:-1]))
-    return uf, c
+    return u, c
 
 
 def plot(N, L, ui, u, c, amp):
@@ -171,11 +89,12 @@ def plot(N, L, ui, u, c, amp):
     ui: initial guess
     u: solution
     """
+
     X = np.linspace(-L, L, num=N, endpoint=False)
     plt.plot(X, ui, label="Initial Guess")
     plt.plot(X, u, label="Solution")
-    plt.plot(X, f2(u, c, amp)[:-1], label="f")
-    plt.title(f"Travelling wave solution with {N} grid points, method 2")
+    plt.title(f"Travelling wave solution with {N} grid points")
+    plt.plot(X, f(u, L, c, amp)[:-1], label="f")
     plt.xlabel("X")
     plt.ylabel("u")
     plt.legend()
@@ -201,7 +120,9 @@ def bifurcation(N, amp, n, u):
     plt.grid(True)
     for i in range(n):
         amplitude = step * (i + 1)
-        ui, c = newton_meth2(N, ui, amplitude, c=c)
+        uii = np.copy(ui)
+        ui, c = newton_meth(ui, L, amplitude, c=c)
+        plot(N, L, uii, ui, c, amplitude)
         print(ui[N//2 + 1] - ui[0])
         plt.plot(X, ui, label=f"h = {amplitude}")
         # print(c)
@@ -226,9 +147,7 @@ def start():
     X = np.linspace(-L, L, num=N, endpoint=False)
     ui = (amp/2)*np.cos(X)
 
-    newton_meth(N, L, amp)
-    u, c = newton_meth2(N, ui, amp)
-    print(len(ui))
+    u, c = newton_meth(ui, L, amp)
     plot(N, L, ui, u, c, amp)
     bifurcation(N, amp, 10, ui)
 
