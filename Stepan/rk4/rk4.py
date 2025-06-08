@@ -73,7 +73,7 @@ for step in range(1, steps + 1):
         snapshots.append(u.copy())
         times.append(step * dt)
 
-
+"""
 fig, ax = plt.subplots()
 line, = ax.plot(x, snapshots[0])
 ax.set_ylim(-2, 2)
@@ -93,4 +93,14 @@ ani = animation.FuncAnimation(
 )
 
 
+plt.show()
+"""
+integral = []
+for snapshot in snapshots:
+    current = 0
+    for step_val in snapshot:
+        current += step_val * dx
+    integral += [current]
+
+plt.plot(snapshot_times, integral)
 plt.show()
