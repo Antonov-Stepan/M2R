@@ -7,8 +7,8 @@ L = np.pi
 N = 2048
 x = np.linspace(-L, L, N, endpoint=False)
 h = x[1] - x[0]
-k = 0.01
-T = 10.0
+k = 0.001
+T = 10
 steps = int(T / k)
 #count_steps = np.linspace(0, )
 q = 3  # Fixed-point iterations per time step
@@ -22,8 +22,8 @@ sign_p = np.sign(p)
 hilbert_laplacian = -1j * sign_p * (k_vals**2)
 
 # Crank–Nicolson coefficients
-C1_vals = 1 + 0.5 * k * hilbert_laplacian
-C2_vals = 1 / (1 - 0.5 * k * hilbert_laplacian)
+C1_vals = 1 - 0.5 * k * hilbert_laplacian
+C2_vals = 1 / (1 + 0.5 * k * hilbert_laplacian)
 
 # Zabusky–Kruskal nonlinear term
 def nonlinear_term(u):
@@ -55,7 +55,15 @@ for step in range(1, steps + 1):
         snapshots.append(U.copy())
         times.append(step * k)
 
+integral = []
+for snapshot in snapshots:
+    current = 0
+    for step_val in snapshot:
+        current += step_val * h
+    integral += [current]
 
+plt.plot(snapshot_times, integral)
+plt.show()
 # Parameters
 c = 0.25     # wave speed (you can change)
 t = 0.5        # fixed time (you can change)
@@ -89,6 +97,7 @@ ax = fig.add_subplot(projection='3d')
 ax.plot_wireframe(X, T, Z, rstride=10, cstride=10)
 plt.show()
 """
+"""
 fig, ax = plt.subplots()
 line, = ax.plot(x, snapshots[0])
 ax.set_ylim(-2, 2)
@@ -108,3 +117,4 @@ ani = animation.FuncAnimation(
 
 
 plt.show()
+"""
