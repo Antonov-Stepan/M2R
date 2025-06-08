@@ -1,6 +1,6 @@
-"""Calculates the solution to B-O using Eulers method.
+"""Calculates the solution to B-O using RK4 method.
 
-eulers.py
+rk4.py
 
 """
 
@@ -9,9 +9,16 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 
+def dealias(u_hat):
+    N = len(u_hat)
+    cutoff = int(2 * N / 3)
+    u_hat[cutoff:-cutoff] = 0
+    return u_hat
+
 def hilbert_transform(u, k_sign):
     """Compute the Hilbert transform by Fouriers method."""
     u_hat = np.fft.fft(u)
+    u_hat = dealias(u_hat)
     H_hat = -1j * k_sign * u_hat
     return np.fft.ifft(H_hat).real
 
@@ -19,6 +26,7 @@ def hilbert_transform(u, k_sign):
 def spatial_derivatives(u, k):
     """Compute the derivatives int the Fourier space."""
     u_hat = np.fft.fft(u)
+    u_hat = dealias(u_hat)
     ux = np.fft.ifft(1j * k * u_hat).real
     uxx = np.fft.ifft(-k**2 * u_hat).real
     return np.array(ux), np.array(uxx)
@@ -30,10 +38,18 @@ def f(u, k, k_sign):
     Hu_xx = hilbert_transform(uxx, k_sign)
     return -(Hu_xx + u * ux)
 
+def rk4_step(u, dt, k):
+    k1 = f(u, k, k_sign)
+    k2 = f(u + 0.5 * dt * k1, k, k_sign)
+    k3 = f(u + 0.5 * dt * k2, k, k_sign)
+    k4 = f(u + dt * k3, k, k_sign)
+
+    return u + (dt / 6) * (k1 + 2*k2 + 2*k3 + k4)
+
 
 N = 256
 L = np.pi
-T = 0.02
+T = 5.0
 dt = 0.0001
 steps = int(T / dt)
 
@@ -42,27 +58,30 @@ dx = x[1] - x[0]
 k = np.fft.fftfreq(N, d=dx) * 2 * np.pi
 k_sign = np.sign(k)
 
-u = 0.1 * np.cos(x)
+u = np.cos(x)
 
-snapshot_times = np.linspace(0, T, 100)
+snapshot_times = np.linspace(0, T, 100)  # t = 0, 0.5, ..., 5.0
 snapshot_steps = [int(t / dt) for t in snapshot_times]
-snapshots = []
-times = []
+snapshots = [u.copy()]
+times = [0.0]
 
-for step in range(steps + 1):
+for step in range(1, steps + 1):
+
+    u = rk4_step(u, dt, k)
+
     if step in snapshot_steps:
         snapshots.append(u.copy())
         times.append(step * dt)
-    u = u + dt * f(u, k, k_sign)
 
-# === Plotting and animation ===
+
 fig, ax = plt.subplots()
 line, = ax.plot(x, snapshots[0])
-title = ax.set_title("t = 0.00")
-ax.set_ylim(-0.5, 0.5)
+ax.set_ylim(-2, 2)
 ax.set_xlim(x[0], x[-1])
 ax.set_xlabel("x")
 ax.set_ylabel("u(x, t)")
+title = ax.set_title("t = 0.00")
+
 
 def update(frame):
     line.set_ydata(snapshots[frame])
@@ -72,5 +91,6 @@ def update(frame):
 ani = animation.FuncAnimation(
     fig, update, frames=len(snapshots), interval=100, blit=False
 )
+
 
 plt.show()
