@@ -9,16 +9,9 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 
-def dealias(u_hat):
-    N = len(u_hat)
-    cutoff = int(2 * N / 3)
-    u_hat[cutoff:-cutoff] = 0
-    return u_hat
-
 def hilbert_transform(u, k_sign):
     """Compute the Hilbert transform by Fouriers method."""
     u_hat = np.fft.fft(u)
-    u_hat = dealias(u_hat)
     H_hat = -1j * k_sign * u_hat
     return np.fft.ifft(H_hat).real
 
@@ -26,7 +19,6 @@ def hilbert_transform(u, k_sign):
 def spatial_derivatives(u, k):
     """Compute the derivatives int the Fourier space."""
     u_hat = np.fft.fft(u)
-    u_hat = dealias(u_hat)
     ux = np.fft.ifft(1j * k * u_hat).real
     uxx = np.fft.ifft(-k**2 * u_hat).real
     return np.array(ux), np.array(uxx)
