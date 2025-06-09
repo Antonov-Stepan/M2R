@@ -94,10 +94,42 @@ def L_matrix(U, c, k):
     return L
 
 
-x, U, c, k = newton(H=0.2, N=128)
+x, U, c, k = newton(H=0.5, N=128)
 Lmat = L_matrix(U, c, k)
-eigvals = np.linalg.eigvals(Lmat)
+eigvals, eigvecs = np.linalg.eig(Lmat)
 
+# Plot of eigenvectors
+indices = np.where((np.abs(eigvals.imag) < 100) & (eigvals.imag != 0))[0]
+
+plt.figure(figsize=(10, 6))
+for i in indices:
+    v = eigvecs[:, i]
+    plt.plot(x, v.real, label=f"Im(λ)={eigvals[i].imag}")
+
+plt.xlabel("x")
+plt.ylabel("Eigenvector component")
+plt.title("Eigenvectors with |Im(λ)| < 100")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+# Plot of eigenvectors with imag part of eigenvalue = 0
+indices = np.where((eigvals.imag == 0))[0]
+
+plt.figure(figsize=(10, 6))
+for i in indices:
+    v = eigvecs[:, i]
+    plt.plot(x, v.real)
+
+plt.xlabel("x")
+plt.ylabel("Eigenvector component")
+plt.title("Eigenvectors with Im(λ) = 0")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Plot of eigenvalues
 plt.figure(figsize=(6, 4))
 plt.scatter(eigvals.real, eigvals.imag, s=14)
 plt.axvline(0, color='k', lw=0.8)

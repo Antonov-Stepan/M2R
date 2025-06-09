@@ -48,7 +48,7 @@ def jacobian(u, c, k, H, func):
     return J
 
 
-def newton(H, *, N=256, L=np.pi, tol=1e-12, n=30):
+def newton(H, *, N=128, L=20, tol=1e-12, n=30):
     dx = 2*L / N
     x = np.arange(-L, L, dx)
     k = np.fft.fftfreq(N, d=dx) * 2*np.pi
