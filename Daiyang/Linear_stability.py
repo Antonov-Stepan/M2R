@@ -7,7 +7,7 @@ def hilbert(u, k):
     sgn = np.sign(k)
     sgn[0] = 0
     u_hat = np.fft.fft(u)
-    return np.fft.ifft(-1j * sgn * u_hat).real
+    return np.fft.ifft(1j * sgn * u_hat).real
 
 
 # Derivative of u
@@ -16,7 +16,7 @@ def spatial_derivatives(u, k):
     u_hat = np.fft.fft(u)
     ux = np.fft.ifft(1j * k * u_hat).real
     uxx = np.fft.ifft(-k**2 * u_hat).real
-    return np.array(ux), np.array(uxx)
+    return ux, uxx
 
 
 # Find f(u): [-cH(u_x) - u_xx + H(u*u_x), u(0) - u(-L) + H]
@@ -67,14 +67,41 @@ def newton(H, *, N=256, L=np.pi, tol=1e-12, n=30):
         u += delta[:-1]
         c += delta[-1]
 
-    plt.plot(x, H/2 * np.cos(x), label='Initial guess')
-    plt.plot(x, u, label='Newtons Solution')
-    plt.xlabel('x')
-    plt.ylabel('u')
-    plt.grid(True)
-    plt.legend()
-    plt.show()
+    return x, u, c, k
 
 
-H = 1
-newton(H)
+# L = -c H(dx) - dx² + H( U dx + Ux )
+def Lv(v, U, Ux, c, k):
+
+    vx = np.fft.ifft(1j * k * np.fft.fft(v)).real
+    vxx = np.fft.ifft(-k**2 * np.fft.fft(v)).real
+    H_vx = hilbert(vx, k)
+
+    H_term = hilbert(U * vx + Ux * v, k)
+
+    return -c * H_vx + vxx + H_term
+
+
+def L_matrix(U, c, k):
+    N = len(U)
+    Ux, _ = spatial_derivatives(U, k)
+
+    L_mat = np.zeros((N, N))
+
+    for j in range(N):
+        e_j = np.zeros(N)
+        e_j[j] = 1.0
+        L_mat[:, j] = Lv(e_j, U, Ux, c, k)
+    return L_mat
+
+
+x, U, c, k = newton(H=1.5, N=32)
+Lmat = L_matrix(U, c, k)
+eigvals = np.linalg.eigvals(Lmat)
+
+plt.figure(figsize=(6, 4))
+plt.scatter(eigvals.real, eigvals.imag, s=14)
+plt.axvline(0, color='k', lw=0.8)
+plt.xlabel(r'Re$(\lambda)$')
+plt.ylabel(r'Im$(\lambda)$')
+plt.show()
