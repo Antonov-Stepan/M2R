@@ -72,7 +72,7 @@ References:
 #     plt.ylabel("u")
 #     plt.legend()
 #     plt.grid(True)
-    
+
 #     plt.show()
 #     print(f"c estimate:{c}")
 
@@ -136,14 +136,18 @@ def jacobian2(u, c, amplitude, res):
     return J
 
 
-def newton_meth2(N, u, amp, c=0.0):
+def newton_meth2(N, u, amplitude, c):
     """Only solving half the solution but return full reflected solution"""
 
     # create grid
     # h = half
+    print(f"amplitude1={amplitude}")
+    amp = np.copy(amplitude)
+    print(f"amplitude2={amp}")
     Nh = N//2 + 1
-    # print(c)
+    print(c)
     c = np.copy(c)
+    print(c)
     # initial guess
     ui = np.copy(u)
     ui = ui[0:Nh]
@@ -163,6 +167,7 @@ def newton_meth2(N, u, amp, c=0.0):
     # final u
     uf = np.concatenate((ui, ui[-2:0:-1]))
     # print(uf)
+    print(f"amplitude3={amp}")
     return uf, c
 
 
@@ -193,14 +198,19 @@ def plot(N, L, ui, u, c, amp):
 def bifurcation(N, amp, n, u):
     """Create bifurcation diagram for amplitude and c"""
 
-    ui = np.copy(u)
+    # ui = np.copy(u)
     c = 0.0
     step = amp/n
     c_values = np.zeros(n)
     h_values = np.zeros(n)
     L = np.pi
     X = np.linspace(-L, L, num=N, endpoint=False)
-    plt.plot(X, ui, label="Initial Guess")
+    # the initial guess in start has too big of an amplitude because it uses
+    # amp as the amplitude and not amp/n so create new initial guess, first u
+    # passed in is like a dummy variable
+    # so initial guess should be:
+    ui = ((step/2)*np.cos(X))
+    # plt.plot(X, ui, label="Initial Guess")
     plt.title("Travelling wave bifurcation")
     plt.xlabel("X")
     plt.ylabel("u")
@@ -217,12 +227,12 @@ def bifurcation(N, amp, n, u):
         # print(c)
         c_values[i] = c
         h_values[i] = amplitude
-    # plt.legend()
+    plt.legend()
     plt.show()
 
     plt.plot(c_values, h_values)
     plt.scatter(c_values, h_values)
-    plt.title("Bifurcation diagram")
+    plt.title("h-c diagram")
     plt.xlabel("c")
     plt.ylabel("amplitude")
     plt.grid(True)
@@ -232,15 +242,19 @@ def bifurcation(N, amp, n, u):
 def start():
     N = 512
     L = np.pi
-    amp = 0.2
+    amp = 0.5
+    c = 0.0
     X = np.linspace(-L, L, num=N, endpoint=False)
     ui = ((amp/2)*np.cos(X))
 
     # newton_meth(N, L, amp)
-    u, c = newton_meth2(N, ui, amp)
-    print(len(ui))
+    u, c = newton_meth2(N, ui, amp, c)
+    # print(len(ui))
     plot(N, L, ui, u, c, amp)
-    bifurcation(N, amp, 300, ui)
+    # amp = 0.01
+    # a, b = newton_meth2(N, ui, amp, c)
+    # plot(N, L, ui, a, b, amp)
+    bifurcation(N, amp, 10, ui)
 
 
 start()

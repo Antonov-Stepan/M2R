@@ -96,3 +96,13 @@ for snapshot in snapshots:
 
 plt.plot(snapshot_times, integral)
 plt.show()
+
+integral2 = []
+for snapshot in snapshots:
+    current2 = 0
+    for step_val in snapshot:
+        current2 += (step_val ** 2) * dx
+    integral2 += [current2]
+
+plt.plot(snapshot_times, integral2)
+plt.show()

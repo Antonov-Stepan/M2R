@@ -8,7 +8,7 @@ N = 2048
 x = np.linspace(-L, L, N, endpoint=False)
 h = x[1] - x[0]
 k = 0.001
-T = 10
+T = 50
 steps = int(T / k)
 #count_steps = np.linspace(0, )
 q = 3  # Fixed-point iterations per time step
@@ -118,3 +118,12 @@ ani = animation.FuncAnimation(
 
 plt.show()
 """
+integral2 = []
+for snapshot in snapshots:
+    current2 = 0
+    for step_val in snapshot:
+        current2 += (step_val ** 2) * h
+    integral2 += [current2]
+
+plt.plot(snapshot_times, integral2)
+plt.show()

@@ -48,7 +48,7 @@ def jacobian(u, c, k, H, func):
     return J
 
 
-def newton(H, *, N=256, L=np.pi, tol=1e-12, n=30):
+def newton(H, *, N=128, L=np.pi, tol=1e-12, n=30):
     dx = 2*L / N
     x = np.arange(-L, L, dx)
     k = np.fft.fftfreq(N, d=dx) * 2*np.pi
@@ -70,35 +70,66 @@ def newton(H, *, N=256, L=np.pi, tol=1e-12, n=30):
     return x, u, c, k
 
 
-# L = -c H(dx) - dx² + H( U dx + Ux )
+# L = -c dx + H(dx^2 + (U dx + Ux)
 def Lv(v, U, Ux, c, k):
 
-    vx = np.fft.ifft(1j * k * np.fft.fft(v)).real
-    vxx = np.fft.ifft(-k**2 * np.fft.fft(v)).real
-    H_vx = hilbert(vx, k)
+    v_hat = np.fft.fft(v)
+    vx = np.fft.ifft(1j*k * v_hat).real
+    vxx = np.fft.ifft(-k**2 * v_hat).real
 
-    H_term = hilbert(U * vx + Ux * v, k)
+    H_vxx = hilbert(vxx, k)
+    Uv_x = Ux * v + U * vx
 
-    return -c * H_vx + vxx + H_term
+    return -c * vx - H_vxx - Uv_x
 
 
 def L_matrix(U, c, k):
     N = len(U)
     Ux, _ = spatial_derivatives(U, k)
-
-    L_mat = np.zeros((N, N))
-
+    L = np.zeros((N, N))
     for j in range(N):
-        e_j = np.zeros(N)
-        e_j[j] = 1.0
-        L_mat[:, j] = Lv(e_j, U, Ux, c, k)
-    return L_mat
+        e = np.zeros(N)
+        e[j] = 1
+        L[:, j] = Lv(e, U, Ux, c, k)
+    return L
 
 
-x, U, c, k = newton(H=1.5, N=32)
+x, U, c, k = newton(H=0.5, N=128)
 Lmat = L_matrix(U, c, k)
-eigvals = np.linalg.eigvals(Lmat)
+eigvals, eigvecs = np.linalg.eig(Lmat)
 
+# Plot of eigenvectors
+indices = np.where((np.abs(eigvals.imag) < 100) & (eigvals.imag != 0))[0]
+
+plt.figure(figsize=(10, 6))
+for i in indices:
+    v = eigvecs[:, i]
+    plt.plot(x, v.real, label=f"Im(λ)={eigvals[i].imag}")
+
+plt.xlabel("x")
+plt.ylabel("Eigenvector component")
+plt.title("Eigenvectors with |Im(λ)| < 100")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+# Plot of eigenvectors with imag part of eigenvalue = 0
+indices = np.where((eigvals.imag == 0))[0]
+
+plt.figure(figsize=(10, 6))
+for i in indices:
+    v = eigvecs[:, i]
+    plt.plot(x, v.real)
+
+plt.xlabel("x")
+plt.ylabel("Eigenvector component")
+plt.title("Eigenvectors with Im(λ) = 0")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Plot of eigenvalues
 plt.figure(figsize=(6, 4))
 plt.scatter(eigvals.real, eigvals.imag, s=14)
 plt.axvline(0, color='k', lw=0.8)
