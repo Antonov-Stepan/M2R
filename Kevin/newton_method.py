@@ -90,6 +90,8 @@ def hilbert_transform(u, k_sign):
 def spatial_derivatives(u, k):
     """Compute the derivatives int the Fourier space."""
     u_hat = np.fft.fft(u)
+    # u_hat[0] = 0
+    # u = np.fft.ifft(u_hat).real
     ux = np.fft.ifft(1j * k * u_hat).real
     uxx = np.fft.ifft(-k**2 * u_hat).real
     return np.array(ux), np.array(uxx)
@@ -100,6 +102,9 @@ def f2(u, c, amplitude):
     # u is half the domain, only have half the u, so replicate to make full,
     # then return half of the full u
     uf = np.concatenate((u, u[-2:0:-1]))
+    uf_hat = np.fft.fft(uf)
+    uf_hat[0] = 0
+    uf = np.fft.ifft(uf_hat).real
     L = np.pi
     N = (len(u) - 1) * 2
     X = np.linspace(-L, L, num=N, endpoint=False)
@@ -141,13 +146,13 @@ def newton_meth2(N, u, amplitude, c):
 
     # create grid
     # h = half
-    print(f"amplitude1={amplitude}")
+    # print(f"amplitude1={amplitude}")
     amp = np.copy(amplitude)
-    print(f"amplitude2={amp}")
+    # print(f"amplitude2={amp}")
     Nh = N//2 + 1
-    print(c)
+    # print(c)
     c = np.copy(c)
-    print(c)
+    # print(c)
     # initial guess
     ui = np.copy(u)
     ui = ui[0:Nh]
@@ -167,7 +172,7 @@ def newton_meth2(N, u, amplitude, c):
     # final u
     uf = np.concatenate((ui, ui[-2:0:-1]))
     # print(uf)
-    print(f"amplitude3={amp}")
+    # print(f"amplitude3={amp}")
     return uf, c
 
 
@@ -199,17 +204,19 @@ def bifurcation(N, amp, n, u):
     """Create bifurcation diagram for amplitude and c"""
 
     # ui = np.copy(u)
-    c = 0.0
+    
     step = amp/n
     c_values = np.zeros(n)
     h_values = np.zeros(n)
-    L = np.pi
+    L = 10
+    c = np.pi/L
     X = np.linspace(-L, L, num=N, endpoint=False)
     # the initial guess in start has too big of an amplitude because it uses
     # amp as the amplitude and not amp/n so create new initial guess, first u
     # passed in is like a dummy variable
     # so initial guess should be:
-    ui = ((step/2)*np.cos(X))
+    # ui = ((step/2)*np.cos(X))
+    ui = ((step/2)*np.cos((X/L)*np.pi))
     # plt.plot(X, ui, label="Initial Guess")
     plt.title("Travelling wave bifurcation")
     plt.xlabel("X")
@@ -241,11 +248,11 @@ def bifurcation(N, amp, n, u):
 
 def start():
     N = 512
-    L = np.pi
-    amp = 0.5
-    c = 0.0
+    L = 10
+    amp = 2
+    c = np.pi/L
     X = np.linspace(-L, L, num=N, endpoint=False)
-    ui = ((amp/2)*np.cos(X))
+    ui = ((amp/2)*np.cos((X/L)*np.pi))
 
     # newton_meth(N, L, amp)
     u, c = newton_meth2(N, ui, amp, c)
@@ -254,7 +261,7 @@ def start():
     # amp = 0.01
     # a, b = newton_meth2(N, ui, amp, c)
     # plot(N, L, ui, a, b, amp)
-    bifurcation(N, amp, 10, ui)
+    bifurcation(N, amp, 50, ui)
 
 
 start()
