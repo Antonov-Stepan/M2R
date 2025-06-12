@@ -1,3 +1,4 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -70,7 +71,7 @@ def newton(H, *, N=128, L=np.pi, tol=1e-12, n=30):
     return x, u, c, k
 
 
-# L = -c dx + H(dx^2 + (U dx + Ux)
+# L = c dx - H(dx^2) - (U dx + Ux) for u = U + \epsilon e^(\lambda t) v
 def Lv(v, U, Ux, c, k):
 
     v_hat = np.fft.fft(v)
@@ -80,7 +81,7 @@ def Lv(v, U, Ux, c, k):
     H_vxx = hilbert(vxx, k)
     Uv_x = Ux * v + U * vx
 
-    return -c * vx - H_vxx - Uv_x
+    return c * vx - H_vxx - Uv_x
 
 
 def L_matrix(U, c, k):
@@ -113,6 +114,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
 # Plot of eigenvectors with imag part of eigenvalue = 0
 indices = np.where((eigvals.imag == 0))[0]
 
