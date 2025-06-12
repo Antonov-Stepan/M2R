@@ -72,12 +72,13 @@ References:
 #     plt.ylabel("u")
 #     plt.legend()
 #     plt.grid(True)
-    
+
 #     plt.show()
 #     print(f"c estimate:{c}")
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 
 
 def hilbert_transform(u, k_sign):
@@ -90,6 +91,8 @@ def hilbert_transform(u, k_sign):
 def spatial_derivatives(u, k):
     """Compute the derivatives int the Fourier space."""
     u_hat = np.fft.fft(u)
+    # u_hat[0] = 0
+    # u = np.fft.ifft(u_hat).real
     ux = np.fft.ifft(1j * k * u_hat).real
     uxx = np.fft.ifft(-k**2 * u_hat).real
     return np.array(ux), np.array(uxx)
@@ -100,6 +103,9 @@ def f2(u, c, amplitude):
     # u is half the domain, only have half the u, so replicate to make full,
     # then return half of the full u
     uf = np.concatenate((u, u[-2:0:-1]))
+    uf_hat = np.fft.fft(uf)
+    uf_hat[0] = 0
+    uf = np.fft.ifft(uf_hat).real
     L = np.pi
     N = (len(u) - 1) * 2
     X = np.linspace(-L, L, num=N, endpoint=False)
@@ -136,14 +142,18 @@ def jacobian2(u, c, amplitude, res):
     return J
 
 
-def newton_meth2(N, u, amp, c=0.0):
+def newton_meth2(N, u, amplitude, c):
     """Only solving half the solution but return full reflected solution"""
 
     # create grid
     # h = half
+    # print(f"amplitude1={amplitude}")
+    amp = np.copy(amplitude)
+    # print(f"amplitude2={amp}")
     Nh = N//2 + 1
     # print(c)
     c = np.copy(c)
+    # print(c)
     # initial guess
     ui = np.copy(u)
     ui = ui[0:Nh]
@@ -163,6 +173,7 @@ def newton_meth2(N, u, amp, c=0.0):
     # final u
     uf = np.concatenate((ui, ui[-2:0:-1]))
     # print(uf)
+    # print(f"amplitude3={amp}")
     return uf, c
 
 
@@ -184,23 +195,34 @@ def plot(N, L, ui, u, c, amp):
     plt.title(f"Travelling wave solution with {N} grid points, method 2")
     plt.xlabel("X")
     plt.ylabel("u")
+    # plot analytical solution along with solution to commpare
+    t = 0
+    analytical = (4*c)/(1 + c**2 * (X-c*t)**2)
+    plt.plot(X, analytical, label="Analytical solution")
     plt.legend()
     plt.grid(True)
     plt.show()
     print(f"c estimate:{c}")
 
 
-def bifurcation(N, amp, n, u):
+def bifurcation(N, amp, n, c, L):
     """Create bifurcation diagram for amplitude and c"""
 
-    ui = np.copy(u)
-    c = 0.0
+    # ui = np.copy(u)
+
     step = amp/n
     c_values = np.zeros(n)
     h_values = np.zeros(n)
-    L = np.pi
+    solutions = []
+    c = np.copy(c)
     X = np.linspace(-L, L, num=N, endpoint=False)
-    plt.plot(X, ui, label="Initial Guess")
+    # the initial guess in start has too big of an amplitude because it uses
+    # amp as the amplitude and not amp/n so create new initial guess, first u
+    # passed in is like a dummy variable
+    # so initial guess should be:
+    # ui = ((step/2)*np.cos(X))
+    ui = ((step/2)*np.cos((X)*(np.pi/L)))
+    # plt.plot(X, ui, label="Initial Guess")
     plt.title("Travelling wave bifurcation")
     plt.xlabel("X")
     plt.ylabel("u")
@@ -208,8 +230,12 @@ def bifurcation(N, amp, n, u):
     for i in range(n):
         amplitude = step * (i + 1)
         ui, c = newton_meth2(N, ui, amplitude, c=c)
+        solutions += [ui]
         # print(ui[N//2 + 1] - ui[0])
         plt.plot(X, ui, label=f"h = {amplitude}")
+        # t = 0
+        # analytical = (4*c)/(1 + c**2 * (X-c*t)**2)
+        # plt.plot(X, analytical, label=f"Analytical solution for h={amplitude}")
         # u_half = ui[0:N//2+1]
         # fu_half = f2(u_half, c, amplitude)[:-1]
         # fu_full = np.concatenate((fu_half, fu_half[-2:0:-1]))
@@ -217,30 +243,44 @@ def bifurcation(N, amp, n, u):
         # print(c)
         c_values[i] = c
         h_values[i] = amplitude
-    # plt.legend()
+    plt.legend()
     plt.show()
 
     plt.plot(c_values, h_values)
     plt.scatter(c_values, h_values)
-    plt.title("Bifurcation diagram")
+    plt.title("h-c diagram")
     plt.xlabel("c")
     plt.ylabel("amplitude")
     plt.grid(True)
     plt.show()
+    solutions_arr = np.array(solutions)
+    # store(solutions_arr)
+
+
+def store(u):
+    with open("Kevin\solutions.pkl", "wb") as file:
+        pickle.dump(u, file)
 
 
 def start():
-    N = 512
+    N = 256
     L = np.pi
-    amp = 0.2
+    amp = 2
+    c = -np.pi/L
     X = np.linspace(-L, L, num=N, endpoint=False)
-    ui = ((amp/2)*np.cos(X))
-
+    ui = ((amp/2)*np.cos(X*(np.pi/L)))
+    # with open("Kevin\solutions.pkl", "rb") as file:
+    #     a = pickle.load(file)
+    # print(a)
+    # print(a[2])
     # newton_meth(N, L, amp)
-    u, c = newton_meth2(N, ui, amp)
-    print(len(ui))
+    u, c = newton_meth2(N, ui, amp, c)
+    # print(len(ui))
     plot(N, L, ui, u, c, amp)
-    bifurcation(N, amp, 300, ui)
+    # amp = 0.01
+    # a, b = newton_meth2(N, ui, amp, c)
+    # plot(N, L, ui, a, b, amp)
+    bifurcation(N, amp, 50, c, L)
 
 
 start()
