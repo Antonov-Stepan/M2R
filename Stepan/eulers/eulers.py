@@ -55,6 +55,7 @@ for step in range(steps + 1):
         times.append(step * dt)
     u = u + dt * f(u, k, k_sign)
 
+"""
 # === Plotting and animation ===
 fig, ax = plt.subplots()
 line, = ax.plot(x, snapshots[0])
@@ -73,4 +74,27 @@ ani = animation.FuncAnimation(
     fig, update, frames=len(snapshots), interval=100, blit=False
 )
 
+plt.show()
+"""
+
+integral = []
+for snapshot in snapshots:
+    current = 0
+    for step_val in snapshot:
+        current += step_val * dx
+    integral += [current]
+
+integral2 = []
+for snapshot in snapshots:
+    current2 = 0
+    for step_val in snapshot:
+        current2 += (step_val ** 2) * dx
+    integral2 += [current2]
+
+plt.plot(snapshot_times, integral, label='Integral u', color='blue')
+plt.plot(snapshot_times, integral2, label='Integral u^2', color='red')
+plt.xlabel('X-axis')
+plt.ylabel('U(x)')
+plt.title('U(x) at t_n')
+plt.legend()
 plt.show()

@@ -7,6 +7,7 @@ rk4.py
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import pandas as pd
 
 
 def hilbert_transform(u, k_sign):
@@ -37,6 +38,11 @@ def rk4_step(u, dt, k):
     k4 = f(u + dt * k3, k, k_sign)
 
     return u + (dt / 6) * (k1 + 2*k2 + 2*k3 + k4)
+
+# Replace with your actual file path
+df = pd.read_csv('C:/Users/2004s/OneDrive/Desktop/GProject/M2R/Kevin/solutions.csv')
+
+first_value = df['u'].iloc[0].split(" ")
 
 
 N = 256
@@ -94,9 +100,6 @@ for snapshot in snapshots:
         current += step_val * dx
     integral += [current]
 
-plt.plot(snapshot_times, integral)
-plt.show()
-
 integral2 = []
 for snapshot in snapshots:
     current2 = 0
@@ -104,5 +107,11 @@ for snapshot in snapshots:
         current2 += (step_val ** 2) * dx
     integral2 += [current2]
 
-plt.plot(snapshot_times, integral2)
+plt.plot(snapshot_times, integral, label='Integral u', color='blue')
+plt.plot(snapshot_times, integral2, label='Integral u^2', color='red')
+plt.xlabel('X-axis')
+plt.ylabel('U(x)')
+plt.title('U(x) at t_n')
+plt.legend()
 plt.show()
+
