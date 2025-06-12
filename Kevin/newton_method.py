@@ -78,7 +78,7 @@ References:
 
 import numpy as np
 import matplotlib.pyplot as plt
-import csv
+import pickle
 
 
 def hilbert_transform(u, k_sign):
@@ -213,6 +213,7 @@ def bifurcation(N, amp, n, c, L):
     step = amp/n
     c_values = np.zeros(n)
     h_values = np.zeros(n)
+    solutions = []
     c = np.copy(c)
     X = np.linspace(-L, L, num=N, endpoint=False)
     # the initial guess in start has too big of an amplitude because it uses
@@ -229,12 +230,12 @@ def bifurcation(N, amp, n, c, L):
     for i in range(n):
         amplitude = step * (i + 1)
         ui, c = newton_meth2(N, ui, amplitude, c=c)
-        store(ui)
+        solutions += [ui]
         # print(ui[N//2 + 1] - ui[0])
         plt.plot(X, ui, label=f"h = {amplitude}")
-        t = 0
-        analytical = (4*c)/(1 + c**2 * (X-c*t)**2)
-        plt.plot(X, analytical, label=f"Analytical solution for h={amplitude}")
+        # t = 0
+        # analytical = (4*c)/(1 + c**2 * (X-c*t)**2)
+        # plt.plot(X, analytical, label=f"Analytical solution for h={amplitude}")
         # u_half = ui[0:N//2+1]
         # fu_half = f2(u_half, c, amplitude)[:-1]
         # fu_full = np.concatenate((fu_half, fu_half[-2:0:-1]))
@@ -252,12 +253,13 @@ def bifurcation(N, amp, n, c, L):
     plt.ylabel("amplitude")
     plt.grid(True)
     plt.show()
+    solutions_arr = np.array(solutions)
+    # store(solutions_arr)
 
 
 def store(u):
-    with open("Kevin\solutions.csv", "a", newline="") as file:
-        file_writer = csv.writer(file)
-        file_writer.writerow([u])
+    with open("Kevin\solutions.pkl", "wb") as file:
+        pickle.dump(u, file)
 
 
 def start():
@@ -267,7 +269,10 @@ def start():
     c = -np.pi/L
     X = np.linspace(-L, L, num=N, endpoint=False)
     ui = ((amp/2)*np.cos(X*(np.pi/L)))
-
+    # with open("Kevin\solutions.pkl", "rb") as file:
+    #     a = pickle.load(file)
+    # print(a)
+    # print(a[2])
     # newton_meth(N, L, amp)
     u, c = newton_meth2(N, ui, amp, c)
     # print(len(ui))
