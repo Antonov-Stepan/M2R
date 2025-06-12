@@ -196,7 +196,7 @@ def plot(N, L, ui, u, c, amp):
     plt.xlabel("X")
     plt.ylabel("u")
     # plot analytical solution along with solution to commpare
-    t = 1
+    t = 0
     analytical = (4*c)/(1 + c**2 * (X-c*t)**2)
     plt.plot(X, analytical, label="Analytical solution")
     plt.legend()
@@ -229,9 +229,12 @@ def bifurcation(N, amp, n, c, L):
     for i in range(n):
         amplitude = step * (i + 1)
         ui, c = newton_meth2(N, ui, amplitude, c=c)
-        # store(ui, c, amplitude)
+        store(ui)
         # print(ui[N//2 + 1] - ui[0])
         plt.plot(X, ui, label=f"h = {amplitude}")
+        t = 0
+        analytical = (4*c)/(1 + c**2 * (X-c*t)**2)
+        plt.plot(X, analytical, label=f"Analytical solution for h={amplitude}")
         # u_half = ui[0:N//2+1]
         # fu_half = f2(u_half, c, amplitude)[:-1]
         # fu_full = np.concatenate((fu_half, fu_half[-2:0:-1]))
@@ -251,14 +254,14 @@ def bifurcation(N, amp, n, c, L):
     plt.show()
 
 
-def store(u, c, amp):
+def store(u):
     with open("Kevin\solutions.csv", "a", newline="") as file:
         file_writer = csv.writer(file)
-        file_writer.writerow([u, c, amp])
+        file_writer.writerow([u])
 
 
 def start():
-    N = 512
+    N = 256
     L = np.pi
     amp = 2
     c = -np.pi/L
