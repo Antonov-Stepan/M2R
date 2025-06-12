@@ -78,6 +78,7 @@ References:
 
 import numpy as np
 import matplotlib.pyplot as plt
+import csv
 
 
 def hilbert_transform(u, k_sign):
@@ -194,29 +195,32 @@ def plot(N, L, ui, u, c, amp):
     plt.title(f"Travelling wave solution with {N} grid points, method 2")
     plt.xlabel("X")
     plt.ylabel("u")
+    # plot analytical solution along with solution to commpare
+    t = 1
+    analytical = (4*c)/(1 + c**2 * (X-c*t)**2)
+    plt.plot(X, analytical, label="Analytical solution")
     plt.legend()
     plt.grid(True)
     plt.show()
     print(f"c estimate:{c}")
 
 
-def bifurcation(N, amp, n, u):
+def bifurcation(N, amp, n, c, L):
     """Create bifurcation diagram for amplitude and c"""
 
     # ui = np.copy(u)
-    
+
     step = amp/n
     c_values = np.zeros(n)
     h_values = np.zeros(n)
-    L = 10
-    c = np.pi/L
+    c = np.copy(c)
     X = np.linspace(-L, L, num=N, endpoint=False)
     # the initial guess in start has too big of an amplitude because it uses
     # amp as the amplitude and not amp/n so create new initial guess, first u
     # passed in is like a dummy variable
     # so initial guess should be:
     # ui = ((step/2)*np.cos(X))
-    ui = ((step/2)*np.cos((X/L)*np.pi))
+    ui = ((step/2)*np.cos((X)*(np.pi/L)))
     # plt.plot(X, ui, label="Initial Guess")
     plt.title("Travelling wave bifurcation")
     plt.xlabel("X")
@@ -225,6 +229,7 @@ def bifurcation(N, amp, n, u):
     for i in range(n):
         amplitude = step * (i + 1)
         ui, c = newton_meth2(N, ui, amplitude, c=c)
+        # store(ui, c, amplitude)
         # print(ui[N//2 + 1] - ui[0])
         plt.plot(X, ui, label=f"h = {amplitude}")
         # u_half = ui[0:N//2+1]
@@ -246,13 +251,19 @@ def bifurcation(N, amp, n, u):
     plt.show()
 
 
+def store(u, c, amp):
+    with open("Kevin\solutions.csv", "a", newline="") as file:
+        file_writer = csv.writer(file)
+        file_writer.writerow([u, c, amp])
+
+
 def start():
     N = 512
-    L = 10
+    L = np.pi
     amp = 2
-    c = np.pi/L
+    c = -np.pi/L
     X = np.linspace(-L, L, num=N, endpoint=False)
-    ui = ((amp/2)*np.cos((X/L)*np.pi))
+    ui = ((amp/2)*np.cos(X*(np.pi/L)))
 
     # newton_meth(N, L, amp)
     u, c = newton_meth2(N, ui, amp, c)
@@ -261,7 +272,7 @@ def start():
     # amp = 0.01
     # a, b = newton_meth2(N, ui, amp, c)
     # plot(N, L, ui, a, b, amp)
-    bifurcation(N, amp, 50, ui)
+    bifurcation(N, amp, 50, c, L)
 
 
 start()
