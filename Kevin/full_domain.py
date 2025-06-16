@@ -25,19 +25,24 @@ def spatial_derivatives(u, k):
 
 def f(u, L, c, amplitude):
     """Return the evaluation of the function"""
-    N = len(u)
+    ui = np.copy(u)
+    u_hat = np.fft.fft(ui)
+    u_hat[0] = 0
+    ui = np.fft.ifft(u_hat).real
+
+    N = len(ui)
     X = np.linspace(-L, L, num=N, endpoint=False)
     dx = X[1] - X[0]
     k = np.fft.fftfreq(N, d=dx) * 2 * np.pi
     k_sign = np.sign(k)
-    ux, uxx = spatial_derivatives(u, k)
+    ux, uxx = spatial_derivatives(ui, k)
     H_ux = hilbert_transform(ux, k_sign)
-    H_uux = hilbert_transform(u * ux, k_sign)
+    H_uux = hilbert_transform(ui * ux, k_sign)
     f = (-c * H_ux) - uxx + H_uux
     # min is 0 and max is N/2 + 1
-    max = (N//2) + 1
+    max = (N//2)
     # MAX - MIN
-    constraint = u[max] - u[0] - amplitude
+    constraint = ui[max] - ui[0] - amplitude
     return np.append(f, constraint)
 
 
@@ -122,8 +127,8 @@ def bifurcation(N, amp, n, u):
         amplitude = step * (i + 1)
         uii = np.copy(ui)
         ui, c = newton_meth(ui, L, amplitude, c=c)
-        plot(N, L, uii, ui, c, amplitude)
-        print(ui[N//2 + 1] - ui[0])
+        # plot(N, L, uii, ui, c, amplitude)
+        # print(ui[N//2 + 1] - ui[0])
         plt.plot(X, ui, label=f"h = {amplitude}")
         # print(c)
         c_values[i] = c
@@ -141,15 +146,15 @@ def bifurcation(N, amp, n, u):
 
 
 def start():
-    N = 512
+    N = 256
     L = np.pi
-    amp = 0.1
+    amp = 2.0
     X = np.linspace(-L, L, num=N, endpoint=False)
     ui = (amp/2)*np.cos(X)
 
     u, c = newton_meth(ui, L, amp)
     plot(N, L, ui, u, c, amp)
-    bifurcation(N, amp, 10, ui)
+    bifurcation(N, amp, 50, ui)
 
 
 start()
