@@ -1,7 +1,9 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 
+# Hilbert Transform
 def hilbert_transform(u, k_sign):
     """Compute the Hilbert transform by Fouriers method."""
     u_hat = np.fft.fft(u)
@@ -17,6 +19,7 @@ def spatial_derivatives(u, k):
     return np.array(ux), np.array(uxx)
 
 
+# Find f(u): [-cH(u_x) - u_xx + H(u*u_x), u(0) - u(-L) + H]
 def f(u, c, H, k):
     N = len(u)
     ux, uxx = spatial_derivatives(u, k)
@@ -30,6 +33,7 @@ def f(u, c, H, k):
     return np.append(f, eq2)
 
 
+# Jacobian
 def jacobian(u, c, k, H, func):
     delta = 1e-8
     N = len(u)
@@ -68,6 +72,7 @@ def newton(H, *, N=128, L=np.pi, tol=1e-12, n=30):
     return x, u, c, k
 
 
+# L = c dx - H(dx^2) - (U dx + Ux) for u = U + \epsilon e^(\lambda t) v
 def Lv(v, U, Ux, c, k):
 
     v_hat = np.fft.fft(v)
@@ -94,81 +99,46 @@ def L_matrix(U, c, k):
     return L
 
 
-def rhs(u, c, k, k_sign):
-    ux, uxx = spatial_derivatives(u, k)
-    return -c * hilbert_transform(ux, k_sign) - uxx + hilbert_transform(u * ux, k_sign)
-
-
-def rk4_step(u, dt, rhs, c, k, k_sign):
-    k1 = rhs(u, c, k, k_sign)
-    k2 = rhs(u + 0.5 * dt * k1, c, k, k_sign)
-    k3 = rhs(u + 0.5 * dt * k2, c, k, k_sign)
-    k4 = rhs(u + dt * k3, c, k, k_sign)
-    return u + dt * (k1 + 2 * k2 + 2 * k3 + k4) / 6
-
-
-def measure_period_fft(a, dt, T_guess):
-    a = a - a.mean()
-    A = np.abs(np.fft.rfft(a))
-    freqs = np.fft.rfftfreq(a.size, dt)
-    i0 = int(round((1.0 / T_guess) / freqs[1]))
-    i_min = max(i0 - 1, 1)
-    i_max = min(i0 + 1, len(A) - 1)
-    idx = i_min + np.argmax(A[i_min: i_max + 1])
-    return 1.0 / freqs[idx]
-
-
 x, U, c, k = newton(H=0.5, N=128)
-
-k_sign = np.sign(k)
-k_sign[0] = 0
-
 Lmat = L_matrix(U, c, k)
 eigvals, eigvecs = np.linalg.eig(Lmat)
 
-modes = np.where(np.abs(eigvals.imag) > 1e-8)[0]
-modes = modes[np.argsort(np.abs(eigvals.imag[modes]))]
+# Plot of eigenvectors
+indices = np.where((np.abs(eigvals.imag) < 100) & (eigvals.imag != 0))[0]
 
-dt = 1e-4
-eps = 1e-2
-omega_range = 500.0
-max_steps = 80_000
+plt.figure(figsize=(10, 6))
+for i in indices:
+    v = eigvecs[:, i]
+    plt.plot(x, v.real, label=f"Im(λ)={eigvals[i].imag}")
 
-omega_list, T_thy_list, T_meas_list = [], [], []
-
-for idx in modes:
-    omega = np.imag(eigvals[idx])
-    if abs(omega) >= omega_range:
-        continue
-    V = eigvecs[:, idx]
-    T_thy = 2 * np.pi / abs(omega)
-    n_steps = int(10 * T_thy / dt)
-    if n_steps > max_steps:
-        continue
-
-    # initial perturbation
-    u = U + eps * (V + np.conj(V))
-    a = np.empty(n_steps + 1)
-    nom = np.linalg.norm(np.imag(V)) ** 2
-
-    for n in range(n_steps + 1):
-        a[n] = np.dot(u - U, np.imag(V)) / nom
-        if n < n_steps:
-            u = rk4_step(u, dt, rhs, c, k, k_sign)
-
-    T_meas = measure_period_fft(a, dt, T_thy)
-
-    omega_list.append(abs(omega))
-    T_thy_list.append(T_thy)
-    T_meas_list.append(T_meas)
-
-# 5. Plot comparison of theoretical vs measured periods
-plt.figure(figsize=(8, 4))
-plt.plot(omega_list, T_thy_list, "o-", label="Theory $2π/|ω|$")
-plt.plot(omega_list, T_meas_list, "x-", label="Measured")
-plt.xlabel(r"$|omega|$")
-plt.ylabel("Period $T$")
-plt.title("Predicted vs Measured Periods")
+plt.xlabel("x")
+plt.ylabel("Eigenvector component")
+plt.title("Eigenvectors with |Im(λ)| < 100")
 plt.legend()
+plt.grid(True)
 plt.tight_layout()
+plt.show()
+
+# Plot of eigenvectors with imag part of eigenvalue = 0
+indices = np.where((eigvals.imag == 0))[0]
+
+plt.figure(figsize=(10, 6))
+for i in indices:
+    v = eigvecs[:, i]
+    plt.plot(x, v.real)
+
+plt.xlabel("x")
+plt.ylabel("Eigenvector component")
+plt.title("Eigenvectors with Im(λ) = 0 ")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Plot of eigenvalues
+plt.figure(figsize=(6, 4))
+plt.scatter(eigvals.real, eigvals.imag, s=14)
+plt.axvline(0, color='k', lw=0.8)
+plt.xlabel(r'Re$(\lambda)$')
+plt.ylabel(r'Im$(\lambda)$')
 plt.show()
