@@ -1,30 +1,32 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 # Hilbert Transform
-def hilbert(u, k):
-    sgn = np.sign(k)
-    sgn[0] = 0
+def hilbert_transform(u, k_sign):
+    """Compute the Hilbert transform by Fouriers method."""
     u_hat = np.fft.fft(u)
-    return np.fft.ifft(1j * sgn * u_hat).real
+    H_hat = -1j * k_sign * u_hat
+    return np.fft.ifft(H_hat).real
 
 
-# Derivative of u
 def spatial_derivatives(u, k):
     """Compute the derivatives int the Fourier space."""
     u_hat = np.fft.fft(u)
     ux = np.fft.ifft(1j * k * u_hat).real
     uxx = np.fft.ifft(-k**2 * u_hat).real
-    return ux, uxx
+    return np.array(ux), np.array(uxx)
 
 
 # Find f(u): [-cH(u_x) - u_xx + H(u*u_x), u(0) - u(-L) + H]
 def f(u, c, H, k):
     N = len(u)
     ux, uxx = spatial_derivatives(u, k)
-    H_ux = hilbert(ux, k)
-    H_uux = hilbert(u * ux, k)
+    k_sign = np.sign(k)
+    k_sign[0] = 0
+    H_ux = hilbert_transform(ux, k_sign)
+    H_uux = hilbert_transform(u * ux, k_sign)
     f = (-c * H_ux) - uxx + H_uux
     mid = N//2
     eq2 = u[mid] - u[0] - H
@@ -70,17 +72,20 @@ def newton(H, *, N=128, L=np.pi, tol=1e-12, n=30):
     return x, u, c, k
 
 
-# L = -c dx + H(dx^2 + (U dx + Ux)
+# L = c dx - H(dx^2) - (U dx + Ux) for u = U + \epsilon e^(\lambda t) v
 def Lv(v, U, Ux, c, k):
 
     v_hat = np.fft.fft(v)
     vx = np.fft.ifft(1j*k * v_hat).real
     vxx = np.fft.ifft(-k**2 * v_hat).real
 
-    H_vxx = hilbert(vxx, k)
+    k_sign = np.sign(k)
+    k_sign[0] = 0
+
+    H_vxx = hilbert_transform(vxx, k_sign)
     Uv_x = Ux * v + U * vx
 
-    return -c * vx - H_vxx - Uv_x
+    return c * vx - H_vxx - Uv_x
 
 
 def L_matrix(U, c, k):
@@ -113,6 +118,7 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
 # Plot of eigenvectors with imag part of eigenvalue = 0
 indices = np.where((eigvals.imag == 0))[0]
 
@@ -123,7 +129,7 @@ for i in indices:
 
 plt.xlabel("x")
 plt.ylabel("Eigenvector component")
-plt.title("Eigenvectors with Im(λ) = 0")
+plt.title("Eigenvectors with Im(λ) = 0 ")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
